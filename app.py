@@ -42,3 +42,35 @@ def index():
     for m in msgs:
         m['_id'] = str(m['_id'])
     return render_template('index.html', messages=msgs)
+
+@app.route('/submit', methods=['POST'])
+def submit():
+    data = request.get_json() or request.form
+    email = data.get('email', '').strip()
+    username = data.get('username', '').strip()
+    message = data.get('message', '').strip()
+    if not email or not username or not message:
+        return ("Missing fields", 400)
+
+
+    # capture IP and device
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    ua = request.headers.get('User-Agent', '')
+    parsed = ua_parse(ua)
+    device = f"{parsed.device.family} | {parsed.os.family} | {parsed.browser.family}"
+
+
+    doc = {
+    'email': email,
+    'username': username,
+    'message': message,
+    'reply': None,
+    'createdAt': datetime.utcnow(),
+    'ip': ip,
+    'device': device,
+    }
+    res = messages_col.insert_one(doc)
+    doc['_id'] = str(res.inserted_id)
+    # Do not return ip/device in response to public
+    public_doc = {k: v for k, v in doc.items() if k not in ('ip', 'device')}
+    return jsonify(public_doc), 201
