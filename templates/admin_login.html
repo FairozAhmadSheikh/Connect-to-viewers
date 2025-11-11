@@ -3,7 +3,7 @@
 {% if error %}
 <div style="color: red">{{ error }}</div>
 {% endif %}
-<form method="post">
+<form method="post" action="/admin">
   <input name="username" placeholder="Username" required />
   <input name="password" placeholder="Password" type="password" required />
   <button type="submit">Login</button>

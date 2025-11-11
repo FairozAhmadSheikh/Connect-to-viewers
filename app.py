@@ -20,9 +20,12 @@ db = client.get_default_database()
 messages_col = db.messages
 
 
-# Admin credentials (hard-coded)
-ADMIN_USERNAME = os.environ.get('USERNAME')
-ADMIN_PASSWORD = os.environ.get('PASSWORD')
+ADMIN_USERNAME = os.environ.get('USERNAME', 'Fairoz')
+ADMIN_PASSWORD = os.environ.get('PASSWORD', 'Fairoz788952@')
+
+# --- DEBUG (safe fallback + visibility) ---
+print(f"[DEBUG] ADMIN_USERNAME={repr(ADMIN_USERNAME)} | ADMIN_PASSWORD={repr(ADMIN_PASSWORD)}")
+
 
 
 # Helpers
@@ -77,13 +80,44 @@ def submit():
 
 @app.route('/admin', methods=['GET','POST'])
 def admin_login():
+    # ensure fallback creds
+    global ADMIN_USERNAME, ADMIN_PASSWORD
+    ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME')
+    ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD')
+
     if request.method == 'GET':
         return render_template('admin_login.html')
-    username = request.form.get('username')
-    password = request.form.get('password')
-    if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+
+    # --- Diagnostics: dump everything we can ---
+    print("----- ADMIN LOGIN ATTEMPT -----")
+    print("ENV USERNAME   :", repr(os.environ.get('ADMIN_USERNAME')))
+    print("ENV PASSWORD   :", repr(os.environ.get('ADMIN_PASSWORD')))
+    print("APP ADMIN_USER :", repr(ADMIN_USERNAME))
+    print("APP ADMIN_PASS :", repr(ADMIN_PASSWORD))
+    try:
+        raw = request.get_data(as_text=True)
+    except Exception as e:
+        raw = f"<error reading raw: {e}>"
+    print("RAW REQUEST BODY:", repr(raw))
+    print("REQUEST FORM KEYS:", list(request.form.keys()))
+    for k in request.form.keys():
+        print(f" request.form[{k}] = {repr(request.form.get(k))}")
+    # Also show headers (so we can see content-type, etc.)
+    print("REQUEST HEADERS:")
+    for h, v in request.headers.items():
+        print(" ", h, ":", repr(v))
+    print("----- END DIAG -----")
+
+    username = (request.form.get('username') or '').strip()
+    password = (request.form.get('password') or '').strip()
+
+    # final compare (case-sensitive)
+    if username == (ADMIN_USERNAME or '').strip() and password == (ADMIN_PASSWORD or '').strip():
         session['admin'] = True
+        print("[DEBUG] Admin login SUCCESS")
         return redirect(url_for('admin_dashboard'))
+
+    print("[DEBUG] Admin login FAILED; compared", repr(username), "vs", repr(ADMIN_USERNAME), " and ", repr(password), "vs", repr(ADMIN_PASSWORD))
     return render_template('admin_login.html', error='Invalid credentials')
 
 @app.route('/dashboard')
