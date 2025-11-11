@@ -1,0 +1,48 @@
+{% extends 'base.html' %} {% block content %}
+<h1>Public Message Board</h1>
+<form id="msgForm" method="post" action="/submit" onsubmit="submitForm(event)">
+  <input name="email" placeholder="Your email" required />
+  <input name="username" placeholder="Username" required />
+  <textarea name="message" placeholder="Message" required></textarea>
+  <button type="submit">Send</button>
+</form>
+<div id="error" style="color: red"></div>
+<hr />
+<h2>Messages</h2>
+<div id="messages">
+  {% for m in messages %}
+  <div class="msg">
+    <div><strong>{{ m.username }}</strong> — <small>{{ m.email }}</small></div>
+    <div>{{ m.message }}</div>
+    {% if m.reply %}
+    <div class="reply">Admin reply: {{ m.reply }}</div>
+    {% endif %}
+    <div class="time">{{ m.createdAt.strftime('%Y-%m-%d %H:%M UTC') }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+<script>
+  async function submitForm(e) {
+    e.preventDefault();
+    const form = e.target;
+    const data = {
+      email: form.email.value,
+      username: form.username.value,
+      message: form.message.value,
+    };
+    const res = await fetch("/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      document.getElementById("error").innerText = txt;
+      return;
+    }
+    const saved = await res.json();
+    location.reload();
+  }
+</script>
+{% endblock %}
