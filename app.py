@@ -34,3 +34,11 @@ def admin_required(fn):
             return redirect(url_for('admin_login'))
         return fn(*args, **kwargs)
     return wrapper
+
+@app.route('/')
+def index():
+    msgs = list(messages_col.find({}, sort=[('createdAt', -1)]))
+    # prepare public view: omit ip/device
+    for m in msgs:
+        m['_id'] = str(m['_id'])
+    return render_template('index.html', messages=msgs)
