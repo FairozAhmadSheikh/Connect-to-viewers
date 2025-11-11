@@ -93,3 +93,12 @@ def admin_dashboard():
     for m in msgs:
         m['_id'] = str(m['_id'])
     return render_template('admin_dashboard.html', messages=msgs)
+
+@app.route('/reply/<id>', methods=['POST'])
+@admin_required
+def reply(id):
+    reply_text = request.form.get('reply')
+    if reply_text is None:
+        return ("Missing reply", 400)
+    messages_col.update_one({'_id': ObjectId(id)}, {'$set': {'reply': reply_text}})
+    return redirect(url_for('admin_dashboard'))
