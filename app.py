@@ -3,10 +3,13 @@ from pymongo import MongoClient
 from datetime import datetime
 from dotenv import load_dotenv
 import os
+import logging
 from user_agents import parse as ua_parse
 from bson.objectid import ObjectId
+import hmac
 
-load_dotenv()
+from dotenv import load_dotenv
+load_dotenv(override=True)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY') or 'dev-secret'
@@ -20,12 +23,36 @@ db = client.get_default_database()
 messages_col = db.messages
 
 
-ADMIN_USERNAME = os.environ.get('USERNAME', 'Fairoz')
-ADMIN_PASSWORD = os.environ.get('PASSWORD', 'Fairoz788952@')
+ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME')
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD')
 
-# --- DEBUG (safe fallback + visibility) ---
-print(f"[DEBUG] ADMIN_USERNAME={repr(ADMIN_USERNAME)} | ADMIN_PASSWORD={repr(ADMIN_PASSWORD)}")
+if not ADMIN_USERNAME or not ADMIN_PASSWORD:
+    # Safe, non-secreting error message (no real credentials shown)
+    raise RuntimeError(
+        "ADMIN_USERNAME and ADMIN_PASSWORD must be set in the environment or in a .env file.\n\n"
+        "Example .env (DO NOT copy real credentials into source):\n"
+        "ADMIN_USERNAME=your_admin_username\n"
+        "ADMIN_PASSWORD=your_admin_password\n\n"
+        "After updating .env, restart the Flask server."
+    )
+# setup a module-level logger (no secrets printed)
+logger = logging.getLogger("flask_app")
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    logger.addHandler(handler)
+logger.setLevel(logging.INFO)
 
+def _mask(value: str, head: int = 2, tail: int = 0):
+    if not value:
+        return "None"
+    if len(value) <= head + tail:
+        return "*" * len(value)
+    return value[:head] + ("*" * (len(value) - head - tail)) + (value[-tail:] if tail else "")
+
+# Log only masked metadata for debugging
+logger.info("ADMIN_USERNAME loaded: %s", _mask(ADMIN_USERNAME, head=2))
+logger.info("ADMIN_PASSWORD loaded: %s (length=%d)", "*" * min(4, len(ADMIN_PASSWORD)), len(ADMIN_PASSWORD))
 
 
 # Helpers
@@ -78,47 +105,27 @@ def submit():
     public_doc = {k: v for k, v in doc.items() if k not in ('ip', 'device')}
     return jsonify(public_doc), 201
 
+
+
 @app.route('/admin', methods=['GET','POST'])
 def admin_login():
-    # ensure fallback creds
-    global ADMIN_USERNAME, ADMIN_PASSWORD
-    ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME')
-    ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD')
-
     if request.method == 'GET':
         return render_template('admin_login.html')
 
-    # --- Diagnostics: dump everything we can ---
-    print("----- ADMIN LOGIN ATTEMPT -----")
-    print("ENV USERNAME   :", repr(os.environ.get('ADMIN_USERNAME')))
-    print("ENV PASSWORD   :", repr(os.environ.get('ADMIN_PASSWORD')))
-    print("APP ADMIN_USER :", repr(ADMIN_USERNAME))
-    print("APP ADMIN_PASS :", repr(ADMIN_PASSWORD))
-    try:
-        raw = request.get_data(as_text=True)
-    except Exception as e:
-        raw = f"<error reading raw: {e}>"
-    print("RAW REQUEST BODY:", repr(raw))
-    print("REQUEST FORM KEYS:", list(request.form.keys()))
-    for k in request.form.keys():
-        print(f" request.form[{k}] = {repr(request.form.get(k))}")
-    # Also show headers (so we can see content-type, etc.)
-    print("REQUEST HEADERS:")
-    for h, v in request.headers.items():
-        print(" ", h, ":", repr(v))
-    print("----- END DIAG -----")
-
+    # get form values and strip whitespace
     username = (request.form.get('username') or '').strip()
     password = (request.form.get('password') or '').strip()
 
-    # final compare (case-sensitive)
-    if username == (ADMIN_USERNAME or '').strip() and password == (ADMIN_PASSWORD or '').strip():
+    # use constant-time comparison to avoid timing attacks
+    user_match = hmac.compare_digest(username, ADMIN_USERNAME)
+    pass_match = hmac.compare_digest(password, ADMIN_PASSWORD)
+
+    if user_match and pass_match:
         session['admin'] = True
-        print("[DEBUG] Admin login SUCCESS")
         return redirect(url_for('admin_dashboard'))
 
-    print("[DEBUG] Admin login FAILED; compared", repr(username), "vs", repr(ADMIN_USERNAME), " and ", repr(password), "vs", repr(ADMIN_PASSWORD))
     return render_template('admin_login.html', error='Invalid credentials')
+
 
 @app.route('/dashboard')
 @admin_required
