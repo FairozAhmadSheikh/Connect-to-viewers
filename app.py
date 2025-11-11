@@ -23,3 +23,14 @@ messages_col = db.messages
 # Admin credentials (hard-coded)
 ADMIN_USERNAME = os.environ.get('USERNAME')
 ADMIN_PASSWORD = os.environ.get('PASSWORD')
+
+
+# Helpers
+def admin_required(fn):
+    from functools import wraps
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if session.get('admin') != True:
+            return redirect(url_for('admin_login'))
+        return fn(*args, **kwargs)
+    return wrapper
