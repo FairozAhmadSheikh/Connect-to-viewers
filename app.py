@@ -74,3 +74,14 @@ def submit():
     # Do not return ip/device in response to public
     public_doc = {k: v for k, v in doc.items() if k not in ('ip', 'device')}
     return jsonify(public_doc), 201
+
+@app.route('/admin', methods=['GET','POST'])
+def admin_login():
+    if request.method == 'GET':
+        return render_template('admin_login.html')
+    username = request.form.get('username')
+    password = request.form.get('password')
+    if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+        session['admin'] = True
+        return redirect(url_for('admin_dashboard'))
+    return render_template('admin_login.html', error='Invalid credentials')
