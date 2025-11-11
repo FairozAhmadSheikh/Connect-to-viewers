@@ -102,3 +102,8 @@ def reply(id):
         return ("Missing reply", 400)
     messages_col.update_one({'_id': ObjectId(id)}, {'$set': {'reply': reply_text}})
     return redirect(url_for('admin_dashboard'))
+
+@app.route('/logout')
+def logout():
+    session.pop('admin', None)
+    return redirect(url_for('admin_login'))
