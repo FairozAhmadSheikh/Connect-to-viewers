@@ -107,3 +107,21 @@ def reply(id):
 def logout():
     session.pop('admin', None)
     return redirect(url_for('admin_login'))
+
+# API endpoint to get public messages as JSON
+@app.route('/api/messages')
+def api_messages():
+    msgs = list(messages_col.find({}, sort=[('createdAt', -1)]))
+    out = []
+    for m in msgs:
+        out.append({
+        'id': str(m['_id']),
+        'email': m['email'],
+        'username': m['username'],
+        'message': m['message'],
+        'reply': m.get('reply'),
+        'createdAt': m['createdAt'].isoformat()
+        })
+    return jsonify(out)
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
