@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{{ title or 'Message Board' }}</title>
+    <link rel="stylesheet" href="/static/glass.css" />
+  </head>
+  <body>
+    <header>
+      <nav class="nav">
+        <div class="nav-left">
+          <a class="nav-link" href="/">Home</a>
+          <a class="nav-link" href="/admin">Admin</a>
+        </div>
+        <div class="dev-tag">
+          <a
+            href="https://github.com/FairozAhmadSheikh"
+            target="_blank"
+            rel="noreferrer"
+            >Fairoz Ahmad Sheikh</a
+          >
+        </div>
+      </nav>
+    </header>
+    <main class="page-bg">
+      <div class="container glass-card">{% block content %}{% endblock %}</div>
+    </main>
+  </body>
+</html>
