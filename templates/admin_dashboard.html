@@ -1,0 +1,37 @@
+{% extends 'base.html' %} {% block content %}
+<h1>Admin Dashboard</h1>
+<a href="/logout">Logout</a>
+<table style="width: 100%">
+  <thead>
+    <tr>
+      <th>User</th>
+      <th>Email</th>
+      <th>Message</th>
+      <th>Reply</th>
+      <th>IP</th>
+      <th>Device</th>
+      <th>When</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for m in messages %}
+    <tr>
+      <td>{{ m.username }}</td>
+      <td>{{ m.email }}</td>
+      <td>{{ m.message }}</td>
+      <td>{{ m.reply or '' }}</td>
+      <td>{{ m.ip }}</td>
+      <td>{{ m.device }}</td>
+      <td>{{ m.createdAt.strftime('%Y-%m-%d %H:%M UTC') }}</td>
+      <td>
+        <form method="post" action="/reply/{{ m._id }}">
+          <input name="reply" placeholder="Reply text" />
+          <button type="submit">Send</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
