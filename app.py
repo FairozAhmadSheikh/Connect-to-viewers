@@ -85,3 +85,11 @@ def admin_login():
         session['admin'] = True
         return redirect(url_for('admin_dashboard'))
     return render_template('admin_login.html', error='Invalid credentials')
+
+@app.route('/dashboard')
+@admin_required
+def admin_dashboard():
+    msgs = list(messages_col.find({}, sort=[('createdAt', -1)]))
+    for m in msgs:
+        m['_id'] = str(m['_id'])
+    return render_template('admin_dashboard.html', messages=msgs)
